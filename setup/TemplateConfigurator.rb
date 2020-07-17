@@ -67,9 +67,7 @@ module Pod
       answer
     end
 
-    def run
-      @message_bank.welcome_message
-
+    def default_setup_function
       platform = self.ask_with_answers("What platform do you want to use?", ["iOS", "macOS"]).to_sym
 
       case platform
@@ -85,6 +83,16 @@ module Pod
               ConfigureIOS.perform(configurator: self)
           end
       end
+    end
+
+    def run
+      @message_bank.welcome_message
+
+      # Uncomment this to use the default implementation
+      # default_setup_function
+
+      # Uses only the swift configuration
+      ConfigureSwift.perform(configurator: self)
 
       replace_variables_in_files
       clean_template_files
@@ -95,6 +103,13 @@ module Pod
       ensure_carthage_compatibility
       reinitialize_git_repo
       run_pod_install
+
+      pod_module = self.ask_with_answers("Would you like to configure the pod as a module for your app?", ["Yes", "No"]).to_sym
+
+      case pod_module 
+        when :yes
+          setup_pod_module
+      end
 
       @message_bank.farewell_message
     end
@@ -115,6 +130,15 @@ module Pod
 
       `git add Example/#{pod_name}.xcodeproj/project.pbxproj`
       `git commit -m "Initial commit"`
+    end
+
+    def setup_pod_module
+      ["Tests", "_Pods.xcodeproj", "/Example/**/*.xcworkspace", "/Example/**/Podfile*", "/Example/**/Pods", "/.git", "/**/Assets", "/**/Classes"].each do |asset|
+        `rm -rf #{@pod_name}/#{asset}`
+      end
+      ["Tests", "Module"].each do |folder|
+        `mkdir #{@pod_name}/#{@pod_name}/#{folder}`
+      end
     end
 
     def clean_template_files
